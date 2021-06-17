@@ -1,0 +1,139 @@
+---
+title: "Dataquest-Forest Fire"
+author: "Aulia Larasati"
+date: "5/27/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(RColorBrewer)
+library(tidyverse)
+library(rnaturalearth) 
+library(rnaturalearthdata)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Reading data 
+```{r}
+forest_fire <- read.csv("forestfires (1).csv")
+```
+2. Data cleaning: 
+Create variables that are easily remembered 
+```{r}
+#Data cleaning, renaming variable
+forest_fire <- forest_fire %>% 
+  rename(x_spatial = X, 
+         y_spatial = Y, 
+         fine_fuel_moist_code = FFMC, 
+         duff_moist = DMC, 
+         initial_spread_index = ISI, #spread of fire
+         relative_humid = RH) 
+
+```
+
+3. Dataquest question:  
+a. What does a single row represent?  
+A single row represent the weather and climate surrounding a certain point in 
+the map at a certain time.  
+
+b. With what I know about fires, how might each of the variables relate to the
+fires themselves? This might involve looking up each variable quickly on a search 
+engine and getting a better grasp on what they are.  
+
+The weather / meteorological condition (temperature, humidity, rain, and wind) 
+are used to predict fires to inform firefighting management.   
+FWI is the Canadian system to rate fire danger, it contains FFMC, DMC, DC, and ISI.
+FFMC : Fine fuel moisture code = moisture content that ignition and fire spread
+DMC = fire intensity, 
+ISI = spread of fire 
+RH = relative humidity. 
+
+c. Convert day and month 
+```{r}
+forest_fire <- forest_fire %>% 
+  mutate(month = factor(month, levels = c("jan", "feb", "mar", "apr", "may", 
+                             "jun", "jul", "aug", "sep", "oct","nov", "dec")),
+         day = factor(day, levels = c("mon", "tue", "wed", "thu", "fri", "sat", 
+                                      "sun"))
+         )
+```
+
+d. Create a tibble that counts the number of forest by month 
+```{r}
+forest_fire %>% 
+  group_by(month) %>% 
+  summarize(n_fire = n()) %>% 
+  ggplot(aes(x = month, y = n_fire)) + geom_col(aes(fill = n_fire)) + 
+  labs(x = "month", y = "number of forest fires", 
+       title = "Forest Fires are highest in August and September") + 
+  scale_fill_continuous(high = "darkred")
+```
+d. Create a tibble that counts the number of fire by the day of the week 
+```{r}
+forest_fire %>% 
+  group_by(day) %>% 
+  summarize(n_fire = n()) %>% 
+  mutate(day = fct_reorder(day, n_fire)) %>% 
+  ggplot(aes(x = day, y = n_fire)) + geom_col(aes(fill = day)) + 
+  labs(x = "day", y = "number of forest fires", 
+       title = "The Number of Forest Fires are more common on Friday - Saturday ") + 
+  scale_fill_brewer(palette = "RdYlGn")
+
+```
+
+Forest fires are more common in the months of August and September.
+Specifically in August the number of fires can reach 200. When we look 
+at the data based on days, the number of forest fire is highest in Friday and 
+Sunday
+
+e. Relationship between data each column with month 
+```{r}
+forest_fire_long <- forest_fire %>% 
+  pivot_longer(fine_fuel_moist_code:area, names_to = "variable", 
+               values_to = "value")
+
+#vizualization based on month
+month_fire <- forest_fire_long %>% 
+  ggplot(aes(x = month, y = value, group = month)) + 
+  coord_flip() + 
+  geom_point() + facet_wrap(~variable, scales = "free_x")
+month_fire
+```
+The value for DC, duff moist, FFMC, and ISI is highest in September and August. 
+The values mentioned are used to measure forest fire and its spread in Canada. 
+
+```{r}
+day_fire <- 
+  forest_fire_long %>% 
+  ggplot(aes(x = day, y = value, group = day)) + 
+  coord_flip() + 
+  geom_point() + facet_wrap(~variable, scales = "free_x")
+day_fire
+```
+```{r}
+area_forest <- forest_fire %>% 
+   pivot_longer(fine_fuel_moist_code:rain, names_to = "variable", 
+               values_to = "value") 
+
+area_forest %>% 
+  ggplot(aes(x = value, y = area, group = variable)) + 
+  geom_point() +  facet_wrap(~variable, scales = "free")
+```
+Looking at the relationship between area and other related variables. the widest
+scope of forest fire occur when there has been no rain, relatively low humidity, 
+high FFMC, DC, temperature, and with wind strength around 2.5 to 5. However, 
+it is hard to see the general patern because the datapoints are consentrated at
+the bottom. 
+
+```{r}
+area_forest %>% 
+  filter(area > 1  & area < 300) %>% 
+  ggplot(aes(x = area, y = value, group = variable)) + 
+  geom_point() +  facet_wrap(~variable, scales = "free")
+
+summary(area_forest)
+```
+
+
+
